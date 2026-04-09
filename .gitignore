@@ -1,0 +1,10 @@
+.env
+__pycache__/
+*.pyc
+vagas_vistas.db
+dist/
+build/
+*.spec
+*.exe
+digest_preview.html
+.claude/
