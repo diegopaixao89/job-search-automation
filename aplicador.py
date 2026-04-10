@@ -28,8 +28,8 @@ Segue em anexo meu currículo para apreciação.
 Agradeço a atenção e fico à disposição para uma conversa.
 
 Atenciosamente,
-Diego Mendonça Paixão
-(21) 96905-1345 | diegopaixao89@gmail.com"""
+{{NOME}}
+{{TELEFONE}} | {{EMAIL}}"""
 
 
 def extrair_email_candidatura(descricao: str) -> str | None:

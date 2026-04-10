@@ -51,9 +51,9 @@ Segue em anexo meu currículo para apreciação.
 Agradeço a atenção e fico à disposição para uma conversa.
 
 Atenciosamente,
-Diego Mendonça Paixão
-(21) 96905-1345 | diegopaixao89@gmail.com
-LinkedIn: linkedin.com/in/diegopaixao89"""
+{{NOME}}
+{{TELEFONE}} | {{EMAIL}}
+LinkedIn: {{LINKEDIN}}"""
 
 CARTA_EN = """Dear Hiring Team,
 
@@ -73,9 +73,9 @@ Please find my CV attached. I would welcome the opportunity to discuss how my ba
 contribute to your team.
 
 Best regards,
-Diego Mendonca Paixao
-+55 (21) 96905-1345 | diegopaixao89@gmail.com
-LinkedIn: linkedin.com/in/diegopaixao89"""
+{{NOME}}
+{{TELEFONE}} | {{EMAIL}}
+LinkedIn: {{LINKEDIN}}"""
 
 
 def _escolher_idioma(vaga: dict) -> str:
@@ -308,7 +308,7 @@ def _montar_digest(
 
   <!-- Rodape -->
   <div style="text-align:center;font-size:11px;color:#94a3b8;padding:12px 0 24px;">
-    Automacao de Vagas &mdash; diegopaixao89@gmail.com
+    CaçaVagas
   </div>
 
 </div>

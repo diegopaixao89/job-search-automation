@@ -341,7 +341,7 @@ def analisar_curriculo(caminho_pdf: str, forcar_reanalise: bool = False) -> dict
     from dotenv import load_dotenv
     load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
     # Chave do usuário tem prioridade; chave padrão garante que a IA funcione sem configuração
-    api_key = os.getenv("GEMINI_API_KEY", "").strip() or "AIzaSyA3g687YgcuNqlr2MVIrM0OaPnuS2YIHjU"
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
 
     try:
         resultado = analisar_com_gemini(texto, api_key)

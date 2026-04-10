@@ -91,7 +91,7 @@ def _montar_html(vagas: list[dict]) -> str:
     <b>{len(presenciais)}</b> presenciais (Rio de Janeiro e regiao)
   </div>
   {secoes}
-  <div class="footer">Automacao de Vagas &mdash; diegopaixao89@gmail.com</div>
+  <div class="footer">CaçaVagas</div>
 </div>
 </body>
 </html>"""
