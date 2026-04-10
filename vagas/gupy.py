@@ -25,6 +25,15 @@ def buscar(termos: list[str], limite_por_termo: int = 30) -> list[dict]:
                 if not url or url in vagas:
                     continue
 
+                # Pula empresas inativas (URL com "inactive" no subdomínio)
+                try:
+                    from urllib.parse import urlparse
+                    host = urlparse(url).hostname or ""
+                    if "inactive" in host:
+                        continue
+                except Exception:
+                    pass
+
                 estado = j.get("state") or ""
                 is_remoto = j.get("isRemoteWork", False)
                 tipo = j.get("workplaceType", "")  # "remote" | "hybrid" | "on-site"
@@ -53,6 +62,7 @@ def buscar(termos: list[str], limite_por_termo: int = 30) -> list[dict]:
                     "descricao":  "",
                     "data":       j.get("publishedDate", ""),
                     "plataforma": "Gupy",
+                    "pais": "BR",
                 }
 
         except Exception as e:

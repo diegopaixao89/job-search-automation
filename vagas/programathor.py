@@ -57,6 +57,7 @@ def buscar(locais: list[str]) -> list[dict]:
                         "descricao":  desc[:2000],
                         "data":       "",
                         "plataforma": "ProgramaThor",
+                        "pais": "BR",
                     }
 
             except Exception as e:

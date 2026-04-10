@@ -4,6 +4,20 @@ Aplicativo desktop que busca vagas de emprego em **8 plataformas simultaneamente
 
 **Stack:** Python 3.13 · CustomTkinter · SQLite · BeautifulSoup · Playwright
 
+![CI](https://github.com/diegopaixao89/job-search-automation/actions/workflows/ci.yml/badge.svg)
+
+---
+
+## Screenshots
+
+> Interface principal com lista de vagas, score colorido e filtros
+
+![App desktop com lista de vagas](docs/screenshots/app-main.png)
+
+> Modal de candidatura com preview do e-mail
+
+![Modal de candidatura](docs/screenshots/candidatura.png)
+
 ---
 
 ## Funcionalidades

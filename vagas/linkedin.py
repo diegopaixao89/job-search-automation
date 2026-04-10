@@ -59,6 +59,7 @@ def buscar() -> list[dict]:
 
                 modalidade = _detectar_modalidade(titulo + " " + local)
 
+                pais_vaga = "BR" if ("brazil" in local.lower() or "brasil" in local.lower()) else "WW"
                 vagas[url] = {
                     "titulo":     titulo,
                     "empresa":    empresa,
@@ -68,6 +69,7 @@ def buscar() -> list[dict]:
                     "descricao":  "",
                     "data":       data,
                     "plataforma": "LinkedIn",
+                    "pais":       pais_vaga,
                 }
 
             time.sleep(1)  # pausa leve entre buscas

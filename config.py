@@ -1,19 +1,23 @@
 # config.py — perfil profissional + configuracoes da automacao
+# Dados pessoais (email, cidade) sao lidos do .env para facilitar distribuicao.
 
-EMAIL_DESTINO    = "diegopaixao89@gmail.com"
-EMAIL_REMETENTE  = "diegopaixao89@gmail.com"
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
-CIDADE = "Rio de Janeiro"
-ESTADO = "RJ"
+EMAIL_DESTINO   = os.getenv("EMAIL_DESTINO",   "seu@gmail.com")
+EMAIL_REMETENTE = os.getenv("EMAIL_REMETENTE", "seu@gmail.com")
+
+CIDADE = os.getenv("CIDADE", "Sao Paulo")
+ESTADO = os.getenv("ESTADO", "SP")
 
 LOCAIS_BUSCA = [
-    "Rio de Janeiro",
-    "Niteroi",
-    "Grande Rio",
-    "Regiao Metropolitana do Rio",
+    CIDADE,
+    "Regiao Metropolitana",
+    "remoto",
 ]
 
-# Termos enviados para as plataformas de busca
+# Termos enviados para as plataformas de busca (substituidos pela analise do CV)
 TERMOS_BUSCA = [
     "python automacao",
     "suporte infraestrutura",
@@ -39,12 +43,10 @@ TERMOS_BUSCA = [
 SCORE_MINIMO = 20
 
 # ---------------------------------------------------------------------------
-# Perfil completo — baseado no curriculo e nos projetos reais
+# Perfil de scoring padrao — substituido pela analise do CV
 # ---------------------------------------------------------------------------
 
-# Palavras no TITULO — peso alto
 TITULO_PESOS = {
-    # Cargo / area
     "python":         25,
     "automacao":      25,
     "automação":      25,
@@ -79,22 +81,18 @@ TITULO_PESOS = {
     "administrator":  10,
 }
 
-# Palavras na DESCRICAO — peso menor
 DESCRICAO_PESOS = {
-    # Linguagens e ferramentas que usa
     "python":              15,
     "powershell":          12,
     "bash":                 8,
     "shell":                8,
     "script":              10,
-    # APIs e integrações
     "api":                 10,
     "rest":                 8,
     "webhook":              8,
     "integracao":          10,
     "integração":          10,
     "integration":         10,
-    # Google / Microsoft
     "google workspace":    12,
     "gsuite":              12,
     "g suite":             12,
@@ -104,7 +102,6 @@ DESCRICAO_PESOS = {
     "exchange":             6,
     "azure":                8,
     "entra":                8,
-    # Infra / DevOps
     "docker":               8,
     "linux":                8,
     "windows server":       8,
@@ -117,12 +114,10 @@ DESCRICAO_PESOS = {
     "monitoring":           6,
     "zabbix":               6,
     "grafana":              6,
-    # BD e dados
     "sql":                  5,
     "sqlite":               5,
     "banco de dados":       5,
     "database":             5,
-    # Suporte / ITSM
     "chamados":             8,
     "tickets":              8,
     "itsm":                 8,
@@ -132,14 +127,12 @@ DESCRICAO_PESOS = {
     "n3":                   6,
     "sla":                  6,
     "totvs":               10,
-    # BPM / automação
     "zeev":                12,
     "bpm":                  8,
     "workflow":             8,
     "rpa":                 10,
     "automacao":           12,
     "automação":           12,
-    # Dev
     "git":                  5,
     "github":               5,
     "gitlab":               5,
@@ -147,45 +140,42 @@ DESCRICAO_PESOS = {
     "django":               6,
     "flask":                6,
     "fastapi":              6,
-    # IA / ferramentas modernas
     "llm":                  6,
     "openai":               5,
     "anthropic":            5,
     "ia aplicada":          6,
 }
 
-# Palavras que PENALIZAM (tecnologias fora do perfil atual)
 PENALIZACOES = {
-    "react":         -10,
-    "angular":       -10,
-    "vue":           -10,
-    "next.js":       -10,
-    "frontend":       -8,
-    "front-end":      -8,
-    "java":           -6,
-    "kotlin":         -8,
-    ".net":           -8,
-    "c#":             -8,
-    "ruby":           -8,
-    "php":            -8,
-    "golang":         -5,
-    "rust":           -5,
+    "react":           -10,
+    "angular":         -10,
+    "vue":             -10,
+    "next.js":         -10,
+    "frontend":         -8,
+    "front-end":        -8,
+    "java":             -6,
+    "kotlin":           -8,
+    ".net":             -8,
+    "c#":               -8,
+    "ruby":             -8,
+    "php":              -8,
+    "golang":           -5,
+    "rust":             -5,
     "machine learning": -5,
-    "data science":   -8,
-    "data scientist": -8,
-    "bi developer":   -8,
-    "salesforce":     -8,
-    "sap":            -8,
-    "r estatistica":  -8,
-    "cobol":          -8,
-    "embedded":       -8,
-    "firmware":       -8,
-    "mobile":         -5,
-    "ios":            -8,
-    "android":        -8,
+    "data science":     -8,
+    "data scientist":   -8,
+    "bi developer":     -8,
+    "salesforce":       -8,
+    "sap":              -8,
+    "r estatistica":    -8,
+    "cobol":            -8,
+    "embedded":         -8,
+    "firmware":         -8,
+    "mobile":           -5,
+    "ios":              -8,
+    "android":          -8,
 }
 
-# Bonus por modalidade
 BONUS_REMOTO     = 15
 BONUS_HIBRIDO    = 10
 BONUS_PRESENCIAL =  0

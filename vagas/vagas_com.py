@@ -66,6 +66,7 @@ def buscar() -> list[dict]:
                             "descricao":  texto[:1000],
                             "data":       "",
                             "plataforma": "Vagas.com",
+                            "pais": "BR",
                         }
 
                 except Exception as e:

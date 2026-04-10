@@ -55,6 +55,7 @@ def buscar(limite_por_termo: int = 20) -> list[dict]:
                     continue
 
                 local = ", ".join(restricoes) if restricoes else "Worldwide"
+                pais = "BR" if "Brazil" in restricoes else "WW"
 
                 vagas[url] = {
                     "titulo":     titulo,
@@ -65,6 +66,7 @@ def buscar(limite_por_termo: int = 20) -> list[dict]:
                     "descricao":  desc,
                     "data":       str(j.get("pubDate", "")),
                     "plataforma": "Himalayas",
+                    "pais":       pais,
                 }
 
         except Exception as e:

@@ -54,6 +54,7 @@ def buscar(limite: int = 100) -> list[dict]:
                     "descricao":  _limpar_html(j.get("description", "")),
                     "data":       j.get("publication_date", ""),
                     "plataforma": "Remotive",
+                    "pais": "WW",
                 }
 
         except Exception as e:

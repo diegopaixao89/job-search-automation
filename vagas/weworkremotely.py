@@ -54,6 +54,7 @@ def buscar() -> list[dict]:
                     "descricao":  desc,
                     "data":       tags.get("pubDate", ""),
                     "plataforma": "WeWorkRemotely",
+                    "pais": "WW",
                 }
 
         except Exception as e:

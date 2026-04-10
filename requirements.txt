@@ -1,3 +1,10 @@
 requests
 beautifulsoup4
 python-dotenv
+customtkinter
+playwright
+pdfplumber
+google-genai
+fast-langdetect
+geopy
+haversine
