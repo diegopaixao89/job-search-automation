@@ -19,6 +19,14 @@ LOCAIS_BUSCA = [
 
 # Termos enviados para as plataformas de busca (substituidos pela analise do CV)
 TERMOS_BUSCA = [
+    # Analista Jr. — prioridade máxima
+    "analista de suporte jr",
+    "analista TI junior",
+    "analista infraestrutura junior",
+    "analista sistemas junior",
+    "analista suporte junior",
+    "analista NOC junior",
+    # Demais termos
     "python automacao",
     "suporte infraestrutura",
     "analista infraestrutura TI",
@@ -47,6 +55,13 @@ SCORE_MINIMO = 20
 # ---------------------------------------------------------------------------
 
 TITULO_PESOS = {
+    # Analista Jr. — pesos altos para garantir destaque
+    "analista jr":       35,
+    "analista jr.":      35,
+    "analista junior":   35,
+    "analyst junior":    35,
+    "analyst jr":        35,
+    # Demais termos
     "python":         25,
     "automacao":      25,
     "automação":      25,

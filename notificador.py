@@ -8,12 +8,13 @@ from datetime import datetime
 from matcher import keywords_encontradas
 
 
-def enviar_digest(vagas_novas: list[dict], email_destino: str, email_remetente: str, senha_app: str):
+def enviar_digest(vagas_novas: list[dict], email_destino: str, email_remetente: str, senha_app: str,
+                  destaques: list[dict] | None = None):
     if not vagas_novas:
         print("[Email] Nenhuma vaga nova. E-mail nao enviado.")
         return
 
-    html = _montar_html(vagas_novas)
+    html = _montar_html(vagas_novas, destaques=destaques)
     total = len(vagas_novas)
     data_hoje = datetime.now().strftime("%d/%m/%Y")
 
@@ -33,7 +34,7 @@ def enviar_digest(vagas_novas: list[dict], email_destino: str, email_remetente: 
         raise
 
 
-def _montar_html(vagas: list[dict]) -> str:
+def _montar_html(vagas: list[dict], destaques: list[dict] | None = None) -> str:
     # Separar por modalidade (remoto/hibrido primeiro, presencial depois)
     remotas  = [v for v in vagas if v.get("modalidade") == "Remoto"]
     hibridas = [v for v in vagas if v.get("modalidade") == "Hibrido"]
@@ -43,6 +44,9 @@ def _montar_html(vagas: list[dict]) -> str:
     total = len(vagas)
 
     secoes = ""
+    # Seção de destaque — Analista Jr.
+    if destaques:
+        secoes += _secao_destaque(destaques)
     if remotas:
         secoes += _secao("Remoto", remotas, "#1a7f4b", "#e8f5ee")
     if hibridas:
@@ -95,6 +99,24 @@ def _montar_html(vagas: list[dict]) -> str:
 </div>
 </body>
 </html>"""
+
+
+def _secao_destaque(vagas: list[dict]) -> str:
+    """Seção especial com borda dourada para vagas de Analista Jr."""
+    cor = "#92400e"
+    bg  = "#fffbeb"
+    cards = "".join(_card(v, "#d97706", "#fef3c7") for v in sorted(vagas, key=lambda x: x.get("score", 0), reverse=True))
+    qtd = len(vagas)
+    return f"""
+<div style="margin: 16px 0 0; padding: 14px 28px 4px;
+            background: linear-gradient(90deg, #fef3c7 0%, #fff 100%);
+            border-left: 5px solid #d97706; border-radius: 0 8px 8px 0;">
+  <div style="font-size: 13px; font-weight: 700; letter-spacing: 1px;
+              text-transform: uppercase; color: #92400e; margin-bottom: 10px;">
+    &#11088; Destaque &mdash; Analista Jr. &mdash; {qtd} vaga{'s' if qtd > 1 else ''}
+  </div>
+  {cards}
+</div>"""
 
 
 def _secao(titulo: str, vagas: list[dict], cor: str, bg: str) -> str:

@@ -1,0 +1,49 @@
+name: CacaVagas — Digest Diario
+
+on:
+  schedule:
+    # Roda todo dia às 08:00 BRT (= 11:00 UTC, UTC-3)
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+    # Permite disparar manualmente pelo GitHub (botão "Run workflow")
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # necessário para commitar o banco de volta
+
+    steps:
+      - name: Checkout do repositorio
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: requirements-digest.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-digest.txt
+
+      - name: Criar .env a partir dos secrets
+        run: |
+          echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}" >> .env
+          echo "EMAIL_REMETENTE=${{ secrets.EMAIL_REMETENTE }}" >> .env
+          echo "EMAIL_DESTINO=${{ secrets.EMAIL_DESTINO }}"    >> .env
+          echo "CIDADE=Rio de Janeiro"                         >> .env
+          echo "ESTADO=RJ"                                     >> .env
+
+      - name: Buscar vagas e enviar digest
+        run: python vagas_por_email/buscar_e_enviar.py
+
+      - name: Salvar banco de deduplicacao no repositorio
+        run: |
+          git config user.name  "CacaVagas Bot"
+          git config user.email "actions@github.com"
+          git add -f vagas_vistas.db
+          git diff --cached --quiet || git commit -m "chore: atualiza banco de vagas [skip ci]"
+          git push
