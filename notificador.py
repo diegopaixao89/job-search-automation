@@ -19,7 +19,7 @@ def enviar_digest(vagas_novas: list[dict], email_destino: str, email_remetente: 
     data_hoje = datetime.now().strftime("%d/%m/%Y")
 
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"[Vagas] {total} nova{'s' if total > 1 else ''} vaga{'s' if total > 1 else ''} — {data_hoje}"
+    msg["Subject"] = f"CaçaVagas — {total} vaga{'s' if total > 1 else ''} nova{'s' if total > 1 else ''} — {data_hoje}"
     msg["From"]    = email_remetente
     msg["To"]      = email_destino
     msg.attach(MIMEText(html, "html", "utf-8"))
