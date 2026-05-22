@@ -10,6 +10,7 @@
 
 import argparse
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -71,12 +72,50 @@ def coletar() -> list[dict]:
     return todas
 
 
+# Municípios da Região Metropolitana do Rio de Janeiro (lowercase, sem acento e com acento)
+_RJ_METRO = {
+    "rio de janeiro", "greater rio",
+    "niteroi", "niterói",
+    "sao goncalo", "são gonçalo",
+    "duque de caxias",
+    "nova iguacu", "nova iguaçu",
+    "belford roxo",
+    "sao joao de meriti", "são joão de meriti",
+    "nilopolis", "nilópolis",
+    "mesquita",
+    "itaguai", "itaguaí",
+    "queimados",
+    "japeri",
+    "seropedica", "seropédica",
+    "marica", "maricá",
+    "itaborai", "itaboraí",
+    "mage", "magé",
+    "paracambi",
+    "guapimirim",
+    "tangua", "tanguá",
+    "cachoeiras de macacu",
+    "rio bonito",
+}
+
+
+def _local_aceito(vaga: dict) -> bool:
+    """Vagas remotas passam sempre. Presenciais/híbridas só da RM do Rio de Janeiro."""
+    if vaga.get("modalidade") == "Remoto":
+        return True
+    local = (vaga.get("local") or "").lower()
+    if not local or local in ("brasil", "brazil", "brasil/brazil"):
+        return True  # sem localização definida — inclui por precaução
+    if re.search(r"\brj\b", local):
+        return True
+    return any(cidade in local for cidade in _RJ_METRO)
+
+
 def processar(todas: list[dict], score_minimo: int) -> list[dict]:
     """Calcula score de cada vaga, filtra pelo mínimo e ordena."""
     for v in todas:
         v["score"] = calcular_score(v)
 
-    filtradas = [v for v in todas if v["score"] >= score_minimo]
+    filtradas = [v for v in todas if v["score"] >= score_minimo and _local_aceito(v)]
 
     # Remoto primeiro, depois Hibrido, depois Presencial; desempate por score desc
     filtradas.sort(key=lambda v: (
