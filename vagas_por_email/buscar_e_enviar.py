@@ -110,12 +110,24 @@ def _local_aceito(vaga: dict) -> bool:
     return any(cidade in local for cidade in _RJ_METRO)
 
 
+_PCD_RE = re.compile(r"\bpcd\b|defici[êe]ncia", re.I)
+
+
+def _nao_e_pcd_exclusiva(vaga: dict) -> bool:
+    titulo = vaga.get("titulo") or ""
+    descricao = vaga.get("descricao") or ""
+    return not _PCD_RE.search(titulo + " " + descricao)
+
+
 def processar(todas: list[dict], score_minimo: int) -> list[dict]:
     """Calcula score de cada vaga, filtra pelo mínimo e ordena."""
     for v in todas:
         v["score"] = calcular_score(v)
 
-    filtradas = [v for v in todas if v["score"] >= score_minimo and _local_aceito(v)]
+    filtradas = [
+        v for v in todas
+        if v["score"] >= score_minimo and _local_aceito(v) and _nao_e_pcd_exclusiva(v)
+    ]
 
     # Remoto primeiro, depois Hibrido, depois Presencial; desempate por score desc
     filtradas.sort(key=lambda v: (
