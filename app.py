@@ -11,7 +11,8 @@ load_dotenv()
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from config import EMAIL_REMETENTE, EMAIL_DESTINO, TERMOS_BUSCA, SCORE_MINIMO
-from matcher import calcular_score
+from filtros_vagas import vaga_elegivel_geograficamente
+from matcher import pontuar_vaga
 import banco, notificador, aplicador
 import curriculo_parser
 from detector_idioma import enriquecer_vaga
@@ -971,8 +972,10 @@ class App(ctk.CTk):
             url = v.get("url", "")
             if not url or url in self._urls_vistos:
                 continue
+            if not vaga_elegivel_geograficamente(v):
+                continue
             self._urls_vistos.add(url)
-            v["score"] = calcular_score(v)
+            pontuar_vaga(v)
             v["_email_candidatura"] = aplicador.extrair_email_candidatura(v.get("descricao", ""))
             enriquecer_vaga(v)
             self.vagas_cache.append(v)
@@ -1094,15 +1097,16 @@ class App(ctk.CTk):
         base = [
             v for v in self.vagas_cache
             if v.get("score", 0) >= sc_min
+            and vaga_elegivel_geograficamente(v)
             and v.get("modalidade", "Presencial") in mods
             and (not so_email or v.get("_email_candidatura"))
             and not (ocultar_req_en and v.get("idioma_obrigatorio") == "en")
         ]
 
-        # "Todas" — Remoto primeiro, depois por score
+        # "Todas" — aderencia primeiro; modalidade apenas como desempate.
         f_todas = sorted(base, key=lambda v: (
+            -v.get("score", 0),
             {"Remoto": 0, "Hibrido": 1}.get(v.get("modalidade", ""), 2),
-            -v.get("score", 0)
         ))
 
         # "Nacionais" — presencial/híbrido por distância ↑, remoto por score ↓
@@ -1110,7 +1114,7 @@ class App(ctk.CTk):
             mod  = v.get("modalidade", "")
             prio = {"Presencial": 0, "Hibrido": 1}.get(mod, 2)
             dist = v.get("distancia_km", 9999) if mod in ("Presencial", "Hibrido") else 9999
-            return (prio, dist, -v.get("score", 0))
+            return (-v.get("score", 0), prio, dist)
 
         f_nac = sorted(
             [v for v in base if v.get("pais", "BR") == "BR" and mostrar_pt],

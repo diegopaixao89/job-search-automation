@@ -3,27 +3,36 @@
 import requests
 import time
 from bs4 import BeautifulSoup
+from filtros_vagas import detectar_modalidade
 from vagas.base import HEADERS
 
 SEARCH_URL = "https://www.linkedin.com/jobs/search/"
 
-# Pares (keywords, location) para cobrir remoto + Rio
+# Triplas (keywords, location, somente_remoto) para cobrir Rio + exterior.
 BUSCAS = [
-    ("python automacao",     "Rio de Janeiro, Brazil"),
-    ("devops infraestrutura","Rio de Janeiro, Brazil"),
-    ("suporte TI python",    "Rio de Janeiro, Brazil"),
-    ("backend python",       "Rio de Janeiro, Brazil"),
-    ("python automacao",     "Brazil"),          # pega remotas no Brasil todo
-    ("devops junior",        "Brazil"),
-    ("infraestrutura TI",    "Rio de Janeiro, Brazil"),
-    ("analista sistemas",    "Rio de Janeiro, Brazil"),
+    ("analista de automacao",       "Rio de Janeiro, Brazil", False),
+    ("analista de integracoes",     "Rio de Janeiro, Brazil", False),
+    ("analista de suporte N2",      "Rio de Janeiro, Brazil", False),
+    ("analista de infraestrutura",  "Rio de Janeiro, Brazil", False),
+    ("tecnico de suporte",          "Rio de Janeiro, Brazil", False),
+    ("analista de service desk",    "Rio de Janeiro, Brazil", False),
+    ("analista de TI",              "Rio de Janeiro, Brazil", False),
+    ("analista IAM",                "Rio de Janeiro, Brazil", False),
+    ("IT support analyst",          "Worldwide", True),
+    ("application support analyst", "Worldwide", True),
+    ("desktop support analyst",      "Worldwide", True),
+    ("identity access analyst",      "Worldwide", True),
+    ("python automation junior",    "Worldwide", True),
+    ("backend python junior",       "Worldwide", True),
+    ("desenvolvedor python junior", "Worldwide", True),
+    ("devops junior",               "Worldwide", True),
 ]
 
 
 def buscar() -> list[dict]:
     vagas = {}
 
-    for keywords, location in BUSCAS:
+    for keywords, location, somente_remoto in BUSCAS:
         try:
             params = {
                 "keywords": keywords,
@@ -31,6 +40,8 @@ def buscar() -> list[dict]:
                 "f_TPR": "r604800",   # ultima semana
                 "sortBy": "DD",       # mais recentes
             }
+            if somente_remoto:
+                params["f_WT"] = "2"
             r = requests.get(SEARCH_URL, params=params, headers=HEADERS, timeout=20)
             if r.status_code != 200:
                 continue
@@ -54,17 +65,21 @@ def buscar() -> list[dict]:
 
                 titulo  = titulo_el.get_text(strip=True)  if titulo_el  else ""
                 empresa = empresa_el.get_text(strip=True) if empresa_el else ""
-                local   = local_el.get_text(strip=True)   if local_el   else location
+                local   = local_el.get_text(strip=True)   if local_el   else ""
                 data    = data_el.get("datetime", "")      if data_el    else ""
 
-                modalidade = _detectar_modalidade(titulo + " " + local)
+                modalidade = "Remoto" if somente_remoto else detectar_modalidade(titulo, local)
 
-                pais_vaga = "BR" if ("brazil" in local.lower() or "brasil" in local.lower()) else "WW"
+                referencia_pais = (local or location).lower()
+                pais_vaga = "BR" if ("brazil" in referencia_pais or "brasil" in referencia_pais) else "WW"
                 vagas[url] = {
                     "titulo":     titulo,
                     "empresa":    empresa,
                     "local":      local,
+                    "local_consulta": location,
+                    "local_confiavel": bool(local_el),
                     "modalidade": modalidade,
+                    "modalidade_confiavel": bool(local_el) or somente_remoto,
                     "url":        url,
                     "descricao":  "",
                     "data":       data,
@@ -88,12 +103,3 @@ def _normalizar_url(href: str) -> str:
     if m:
         return f"https://www.linkedin.com/jobs/view/{m.group(1)}"
     return url
-
-
-def _detectar_modalidade(texto: str) -> str:
-    t = texto.lower()
-    if "remoto" in t or "remote" in t or "home office" in t:
-        return "Remoto"
-    if "hibrid" in t or "hybrid" in t:
-        return "Hibrido"
-    return "Presencial"

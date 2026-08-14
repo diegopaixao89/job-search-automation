@@ -2,6 +2,7 @@
 # Documentacao: https://remotive.com/api
 
 import requests
+import html
 from vagas.base import HEADERS
 
 API_URL = "https://remotive.com/api/remote-jobs"
@@ -12,8 +13,9 @@ CATEGORIAS = [
 ]
 
 TERMOS_FILTRO = [
-    "python", "automation", "automacao", "devops", "backend",
-    "infrastructure", "support", "sysadmin", "api",
+    "python", "automation", "integration", "devops", "backend",
+    "infrastructure", "it support", "application support", "sysadmin",
+    "identity access", "iam", "api",
 ]
 
 
@@ -50,6 +52,7 @@ def buscar(limite: int = 100) -> list[dict]:
                     "empresa":    j.get("company_name", ""),
                     "local":      j.get("candidate_required_location", "Worldwide"),
                     "modalidade": "Remoto",
+                    "modalidade_confiavel": True,
                     "url":        url,
                     "descricao":  _limpar_html(j.get("description", "")),
                     "data":       j.get("publication_date", ""),
@@ -65,6 +68,7 @@ def buscar(limite: int = 100) -> list[dict]:
 
 def _limpar_html(texto: str) -> str:
     import re
+    texto = html.unescape(str(texto or ""))
     texto = re.sub(r"<[^>]+>", " ", texto)
     texto = re.sub(r"\s+", " ", texto)
     return texto[:2000].strip()

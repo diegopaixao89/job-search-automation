@@ -34,6 +34,14 @@ class TestCalcularScore:
         score = calcular_score(vaga, PERFIL_TESTE)
         assert score == 0
 
+    def test_descricao_sozinha_nao_aprova_cargo_sem_match_no_titulo(self):
+        vaga = {
+            "titulo": "Assistente Administrativo",
+            "descricao": "Python docker api linux",
+            "modalidade": "Remoto",
+        }
+        assert calcular_score(vaga, PERFIL_TESTE) == 0
+
     def test_penalizacao_reduz_score(self):
         vaga_sem_pen = {
             "titulo": "Desenvolvedor Python",

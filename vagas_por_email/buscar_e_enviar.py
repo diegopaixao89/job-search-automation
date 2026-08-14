@@ -12,6 +12,7 @@ import argparse
 import os
 import re
 import sys
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -27,7 +28,8 @@ from config import (
     EMAIL_DESTINO, EMAIL_REMETENTE,
     TERMOS_BUSCA, LOCAIS_BUSCA, SCORE_MINIMO,
 )
-from matcher import calcular_score
+from filtros_vagas import vaga_elegivel_geograficamente
+from matcher import pontuar_vaga
 import banco
 import notificador
 from vagas import (
@@ -48,6 +50,28 @@ FONTES = [
     ("Vagas.com",       lambda: vagas_com.buscar()),
 ]
 
+TIMEOUT_FONTE = 90  # segundos max por fonte
+
+
+def _executar_com_timeout(fn, timeout: float):
+    """Executa coletor em thread daemon sem bloquear no encerramento do timeout."""
+    estado = {}
+
+    def alvo():
+        try:
+            estado["resultado"] = fn()
+        except BaseException as exc:
+            estado["erro"] = exc
+
+    thread = threading.Thread(target=alvo, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    if thread.is_alive():
+        raise TimeoutError
+    if "erro" in estado:
+        raise estado["erro"]
+    return estado.get("resultado", [])
+
 
 def coletar() -> list[dict]:
     """Consulta todas as fontes e retorna lista deduplicada por URL."""
@@ -57,7 +81,7 @@ def coletar() -> list[dict]:
     for i, (nome, fn) in enumerate(FONTES, 1):
         print(f"  [{i}/{len(FONTES)}] {nome}...", flush=True)
         try:
-            resultado = fn()
+            resultado = _executar_com_timeout(fn, TIMEOUT_FONTE)
             novas = [
                 v for v in resultado
                 if v.get("url") and v["url"] not in urls_vistas
@@ -66,73 +90,58 @@ def coletar() -> list[dict]:
                 urls_vistas.add(v["url"])
             todas.extend(novas)
             print(f"         {len(resultado)} encontradas, {len(novas)} únicas")
+        except TimeoutError:
+            print(f"         TIMEOUT após {TIMEOUT_FONTE}s — pulando")
         except Exception as e:
             print(f"         Erro: {e}")
 
     return todas
 
 
-# Municípios da Região Metropolitana do Rio de Janeiro (lowercase, sem acento e com acento)
-_RJ_METRO = {
-    "rio de janeiro", "greater rio",
-    "niteroi", "niterói",
-    "sao goncalo", "são gonçalo",
-    "duque de caxias",
-    "nova iguacu", "nova iguaçu",
-    "belford roxo",
-    "sao joao de meriti", "são joão de meriti",
-    "nilopolis", "nilópolis",
-    "mesquita",
-    "itaguai", "itaguaí",
-    "queimados",
-    "japeri",
-    "seropedica", "seropédica",
-    "marica", "maricá",
-    "itaborai", "itaboraí",
-    "mage", "magé",
-    "paracambi",
-    "guapimirim",
-    "tangua", "tanguá",
-    "cachoeiras de macacu",
-    "rio bonito",
-}
-
-
-def _local_aceito(vaga: dict) -> bool:
-    """Vagas remotas passam sempre. Presenciais/híbridas só da RM do Rio de Janeiro."""
-    if vaga.get("modalidade") == "Remoto":
-        return True
-    local = (vaga.get("local") or "").lower()
-    if not local or local in ("brasil", "brazil", "brasil/brazil"):
-        return True  # sem localização definida — inclui por precaução
-    if re.search(r"\brj\b", local):
-        return True
-    return any(cidade in local for cidade in _RJ_METRO)
-
-
-_PCD_RE = re.compile(r"\bpcd\b|defici[êe]ncia", re.I)
+_PCD_RE = re.compile(r"\bpcd\b|pessoa(?:s)? com defici[êe]ncia", re.I)
+_PCD_INCLUSIVA_RE = re.compile(
+    r"(?:incluindo|inclusive|tamb[eé]m para)\s+(?:pessoas? com defici[êe]ncia|pcd)"
+    r"|pessoas? com e sem defici[êe]ncia|com ou sem defici[êe]ncia"
+    r"|pcd\s+(?:e|ou)\s+n[aã]o\s+pcd|ampla concorr[êe]ncia|aberta? a todos"
+    r"|tamb[eé]m aberta?[^.;\n]{0,35}(?:sem defici[êe]ncia|n[aã]o pcd)",
+    re.I,
+)
+_PCD_EXCLUSIVA_RE = re.compile(
+    r"(?:exclusiv[ao]|exclusivamente|somente|apenas|destinad[ao]|afirmativa|preferencial)[^.;\n]{0,45}"
+    r"(?:pessoas? com defici[êe]ncia|pcd)"
+    r"|(?:pessoas? com defici[êe]ncia|pcd)[^.;\n]{0,25}(?:exclusiv[ao]|apenas|somente|preferencial)",
+    re.I,
+)
 
 
 def _nao_e_pcd_exclusiva(vaga: dict) -> bool:
     titulo = vaga.get("titulo") or ""
     descricao = vaga.get("descricao") or ""
-    return not _PCD_RE.search(titulo + " " + descricao)
+    texto = titulo + " " + descricao
+    if _PCD_EXCLUSIVA_RE.search(texto):
+        return False
+    if _PCD_RE.search(titulo) and not _PCD_INCLUSIVA_RE.search(texto):
+        return False
+    return True
 
 
 def processar(todas: list[dict], score_minimo: int) -> list[dict]:
-    """Calcula score de cada vaga, filtra pelo mínimo e ordena."""
-    for v in todas:
-        v["score"] = calcular_score(v)
+    """Aplica geografia, perfis dos curriculos, corte e ordenacao."""
+    filtradas = []
+    for vaga in todas:
+        if not vaga_elegivel_geograficamente(vaga):
+            continue
+        if not _nao_e_pcd_exclusiva(vaga):
+            continue
+        pontuar_vaga(vaga)
+        if vaga["score"] >= score_minimo:
+            filtradas.append(vaga)
 
-    filtradas = [
-        v for v in todas
-        if v["score"] >= score_minimo and _local_aceito(v) and _nao_e_pcd_exclusiva(v)
-    ]
-
-    # Remoto primeiro, depois Hibrido, depois Presencial; desempate por score desc
+    # Aderencia primeiro; modalidade funciona apenas como desempate.
     filtradas.sort(key=lambda v: (
-        {"Remoto": 0, "Hibrido": 1}.get(v.get("modalidade", ""), 2),
         -v.get("score", 0),
+        {"Remoto": 0, "Hibrido": 1}.get(v.get("modalidade", ""), 2),
+        v.get("titulo", "").lower(),
     ))
 
     return filtradas
@@ -150,6 +159,14 @@ def main() -> None:
         "--dry-run", action="store_true",
         help="Simula sem enviar e-mail; salva o HTML em preview_digest.html",
     )
+    parser.add_argument(
+        "--history-days", type=int, default=30,
+        help="Mantem no historico apenas vagas vistas nos ultimos N dias (padrão: 30; use 0 para permanente)",
+    )
+    parser.add_argument(
+        "--reset-history", action="store_true",
+        help="Limpa o historico de vagas vistas antes de executar",
+    )
     args = parser.parse_args()
 
     senha = os.getenv("GMAIL_APP_PASSWORD", "").strip()
@@ -162,7 +179,15 @@ def main() -> None:
     print(f"Score mínimo : {args.score}")
     print(f"Destino      : {EMAIL_DESTINO}")
     print(f"Modo         : {'DRY-RUN (sem envio)' if args.dry_run else 'PRODUÇÃO'}")
+    print(f"Historico    : {'permanente' if args.history_days <= 0 else f'ultimos {args.history_days} dias'}")
     print("=" * 60)
+
+    if args.reset_history:
+        banco.limpar_vagas_vistas()
+        print("[INFO] Historico de vagas limpo antes da execucao.")
+    elif args.history_days > 0:
+        banco.limpar_vagas_vistas_mais_antigas_que(args.history_days)
+        print(f"[INFO] Mantendo apenas historico dos ultimos {args.history_days} dias.")
 
     # ── Coleta ───────────────────────────────────────────────────────────────
     print("\nBuscando vagas em todas as fontes...\n")
@@ -180,11 +205,17 @@ def main() -> None:
           f"(remotas: {remotas} | híbridas: {hibridas} | presenciais: {presenciais})")
 
     # ── Filtra apenas as que ainda não foram enviadas ─────────────────────────
-    novas = [v for v in filtradas if banco.is_nova(v["url"])]
+    novas = [v for v in filtradas if banco.is_nova(v["url"], args.history_days if args.history_days > 0 else None)]
     print(f"Não enviadas   : {len(novas)}\n")
 
     if not novas:
         print("Nenhuma vaga nova para enviar. Encerrando.")
+        if filtradas:
+            if args.history_days > 0:
+                print(f"Todas as vagas relevantes já apareceram nos últimos {args.history_days} dias.")
+                print("Para recomeçar do zero, use --reset-history.")
+            else:
+                print("Todas as vagas relevantes já estavam no historico permanente.")
         return
 
     # ── Detecta vagas de Analista Jr. para destaque ───────────────────────────
@@ -220,6 +251,9 @@ def main() -> None:
             v.get("empresa", ""),
             v["plataforma"],
             v["score"],
+            local=v.get("local", ""),
+            modalidade=v.get("modalidade", ""),
+            pais=v.get("pais", "BR"),
         )
 
     print(f"\nConcluído. {len(novas)} vagas enviadas por e-mail.")

@@ -23,8 +23,9 @@ sys.path.insert(0, ROOT)
 
 import config
 import banco
-import matcher
 import aplicador
+from filtros_vagas import vaga_elegivel_geograficamente
+from matcher import pontuar_vaga
 
 # Caminhos dos curriculos PDF
 _DESKTOP_IA = os.path.join(os.path.expanduser("~"), "Desktop", "Projetos IA")
@@ -114,10 +115,15 @@ def _buscar_todas(verbose: bool = True) -> list[dict]:
     for nome, fn in FONTES:
         try:
             resultado = fn()
-            novas = [v for v in resultado if v.get("url") and v["url"] not in urls_vistas]
+            novas = [
+                v for v in resultado
+                if v.get("url")
+                and v["url"] not in urls_vistas
+                and vaga_elegivel_geograficamente(v)
+            ]
             for v in novas:
                 urls_vistas.add(v["url"])
-                v["score"] = matcher.calcular_score(v)
+                pontuar_vaga(v)
                 v["_email_candidatura"] = aplicador.extrair_email_candidatura(v.get("descricao", ""))
             todas.extend(novas)
             if verbose:
@@ -126,6 +132,7 @@ def _buscar_todas(verbose: bool = True) -> list[dict]:
             if verbose:
                 print(f"  [{nome}] ERRO: {e}")
 
+    todas.sort(key=lambda v: (-v.get("score", 0), v.get("titulo", "").lower()))
     return todas
 
 

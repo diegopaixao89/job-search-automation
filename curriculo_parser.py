@@ -359,7 +359,10 @@ def resultado_para_perfil(resultado: dict) -> dict:
     Converte o resultado da análise no formato de perfil do matcher.py.
     Merge com config.py para garantir que campos ausentes tenham valores.
     """
-    from config import TITULO_PESOS, DESCRICAO_PESOS, PENALIZACOES, BONUS_REMOTO, BONUS_HIBRIDO
+    from config import (
+        TITULO_PESOS, DESCRICAO_PESOS, PENALIZACOES,
+        BONUS_REMOTO, BONUS_HIBRIDO, BONUS_PRESENCIAL,
+    )
 
     return {
         "TITULO_PESOS":    resultado.get("titulo_pesos_sugeridos") or TITULO_PESOS,
@@ -367,6 +370,7 @@ def resultado_para_perfil(resultado: dict) -> dict:
         "PENALIZACOES":    resultado.get("penalizacoes_sugeridas") or PENALIZACOES,
         "BONUS_REMOTO":    BONUS_REMOTO,
         "BONUS_HIBRIDO":   BONUS_HIBRIDO,
+        "BONUS_PRESENCIAL": BONUS_PRESENCIAL,
     }
 
 

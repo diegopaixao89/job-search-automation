@@ -1,6 +1,7 @@
 # vagas/weworkremotely.py — RSS We Work Remotely (100% remote, tech)
 
 import requests
+import html
 import xml.etree.ElementTree as ET
 import re
 from vagas.base import HEADERS
@@ -14,8 +15,8 @@ RSS_URLS = [
 
 TERMOS_FILTRO = [
     "python", "devops", "backend", "back-end", "automation", "automacao",
-    "infrastructure", "sre", "platform", "api", "support", "suporte",
-    "integr", "cloud", "linux",
+    "infrastructure", "api", "it support", "application support",
+    "integr", "sysadmin",
 ]
 
 
@@ -50,6 +51,7 @@ def buscar() -> list[dict]:
                     "empresa":    _extrair_empresa(titulo),
                     "local":      regiao or "Worldwide",
                     "modalidade": "Remoto",
+                    "modalidade_confiavel": True,
                     "url":        url,
                     "descricao":  desc,
                     "data":       tags.get("pubDate", ""),
@@ -71,6 +73,7 @@ def _extrair_empresa(titulo: str) -> str:
 
 
 def _limpar_html(texto: str) -> str:
+    texto = html.unescape(str(texto or ""))
     texto = re.sub(r"<[^>]+>", " ", texto)
     texto = re.sub(r"\s+", " ", texto)
     return texto[:2000].strip()

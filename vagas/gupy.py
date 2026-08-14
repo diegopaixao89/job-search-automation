@@ -1,11 +1,13 @@
-# vagas/gupy.py — API publica Gupy
-# Param correto: name (nao jobName). Filtro de estado nao funciona na API,
-# entao filtramos pos-fetch: estado RJ ou trabalho remoto/hibrido.
+# vagas/gupy.py — endpoint publico usado pelo portal de candidatos da Gupy.
+# Nao e a API corporativa documentada (que exige Bearer token); por isso uma
+# mudanca de rota/esquema deve falhar com aviso claro e sem varias tentativas.
 
+import html
+import re
 import requests
 from vagas.base import HEADERS
 
-API_URL = "https://portal.api.gupy.io/api/job"
+API_URL = "https://employability-portal.gupy.io/api/v1/jobs"
 
 
 def buscar(termos: list[str], limite_por_termo: int = 30) -> list[dict]:
@@ -13,12 +15,17 @@ def buscar(termos: list[str], limite_por_termo: int = 30) -> list[dict]:
 
     for termo in termos:
         try:
-            params = {"name": termo, "limit": limite_por_termo, "offset": 0}
+            params = {"jobName": termo, "limit": limite_por_termo, "offset": 0}
             r = requests.get(API_URL, params=params, headers=HEADERS, timeout=15)
             if r.status_code != 200:
-                continue
+                print(f"[Gupy] endpoint indisponivel (HTTP {r.status_code}); fonte interrompida.")
+                return []
 
-            jobs = r.json().get("data", [])
+            payload = r.json()
+            jobs = payload.get("data", [])
+            if not isinstance(jobs, list):
+                print("[Gupy] resposta sem a lista 'data'; fonte interrompida.")
+                return []
 
             for j in jobs:
                 url = j.get("jobUrl") or ""
@@ -51,21 +58,30 @@ def buscar(termos: list[str], limite_por_termo: int = 30) -> list[dict]:
                     modalidade = "Presencial"
 
                 cidade = j.get("city") or ""
-                local = f"{cidade}, {estado}".strip(", ") or "Rio de Janeiro"
+                pais = j.get("country") or ""
+                local = ", ".join(parte for parte in (cidade, estado, pais) if parte)
 
                 vagas[url] = {
                     "titulo":     j.get("name", ""),
                     "empresa":    j.get("careerPageName", ""),
                     "local":      local,
+                    "local_confiavel": bool(cidade),
                     "modalidade": modalidade,
+                    "modalidade_confiavel": True,
                     "url":        url,
-                    "descricao":  "",
+                    "descricao":  _limpar_html(j.get("description") or ""),
                     "data":       j.get("publishedDate", ""),
                     "plataforma": "Gupy",
-                    "pais": "BR",
+                    "pais": "BR" if not pais or pais.lower() in {"brasil", "brazil"} else "WW",
                 }
 
         except Exception as e:
             print(f"[Gupy] erro no termo '{termo}': {e}")
 
     return list(vagas.values())
+
+
+def _limpar_html(texto: str) -> str:
+    texto = html.unescape(str(texto or ""))
+    texto = re.sub(r"<[^>]+>", " ", texto)
+    return re.sub(r"\s+", " ", texto).strip()[:3000]

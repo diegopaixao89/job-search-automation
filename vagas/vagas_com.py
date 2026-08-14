@@ -2,27 +2,47 @@
 # Requer: playwright install chromium
 
 from vagas.base import HEADERS
-import re
+from filtros_vagas import detectar_modalidade, extrair_localizacao_anuncio
 
 BASE_URL = "https://www.vagas.com.br"
 
 BUSCAS = [
-    ("python", "Rio de Janeiro"),
-    ("automacao", "Rio de Janeiro"),
-    ("infraestrutura ti", "Rio de Janeiro"),
-    ("suporte tecnico", "Rio de Janeiro"),
-    ("devops", "Rio de Janeiro"),
-    ("python automacao", ""),        # sem local = pega remotas
+    ("analista de automacao", "Rio de Janeiro"),
+    ("analista de integracoes", "Rio de Janeiro"),
+    ("analista de suporte", "Rio de Janeiro"),
+    ("analista de infraestrutura", "Rio de Janeiro"),
+    ("analista de ti", "Rio de Janeiro"),
+    ("tecnico de suporte", "Rio de Janeiro"),
+    ("analista de service desk", "Rio de Janeiro"),
+    ("analista iam", "Rio de Janeiro"),
+    ("devops junior", "Rio de Janeiro"),
+    ("backend python junior", ""),
+    ("desenvolvedor python junior", ""),
 ]
+
+TIMEOUT_PAGINA = 15000   # 15s por pagina
+TIMEOUT_TOTAL  = 120     # segundos (2min total para Vagas.com)
 
 
 def buscar() -> list[dict]:
+    import threading
+    resultado = []
+    thread = threading.Thread(target=_buscar_inner, args=(resultado,))
+    thread.daemon = True
+    thread.start()
+    thread.join(TIMEOUT_TOTAL)
+    if thread.is_alive():
+        print("[Vagas.com] TIMEOUT geral — pulando fonte")
+    return resultado
+
+
+def _buscar_inner(resultado: list) -> None:
     vagas = {}
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
         print("[Vagas.com] Playwright nao instalado.")
-        return []
+        return
 
     try:
         with sync_playwright() as p:
@@ -34,7 +54,7 @@ def buscar() -> list[dict]:
                     slug   = termo.replace(" ", "-")
                     url    = f"{BASE_URL}/vagas-de-{slug}"
                     params = f"?onde={local.replace(' ', '+')}" if local else ""
-                    page.goto(url + params, timeout=20000, wait_until="domcontentloaded")
+                    page.goto(url + params, timeout=TIMEOUT_PAGINA, wait_until="domcontentloaded")
                     page.wait_for_timeout(2500)
 
                     cards = page.query_selector_all("li.vaga") or page.query_selector_all("article.job")
@@ -55,12 +75,15 @@ def buscar() -> list[dict]:
                         empresa = empresa_el.inner_text().strip() if empresa_el else ""
 
                         texto = card.inner_text()
-                        modalidade = _detectar_modalidade(titulo + " " + texto)
+                        local_real = extrair_localizacao_anuncio(texto, vaga_url)
+                        modalidade = detectar_modalidade(titulo + " " + texto, local_real)
 
                         vagas[vaga_url] = {
                             "titulo":     titulo,
                             "empresa":    empresa,
-                            "local":      local or "Brasil",
+                            "local":      local_real,
+                            "local_consulta": local or "Brasil",
+                            "local_confiavel": bool(local_real),
                             "modalidade": modalidade,
                             "url":        vaga_url,
                             "descricao":  texto[:1000],
@@ -77,13 +100,4 @@ def buscar() -> list[dict]:
     except Exception as e:
         print(f"[Vagas.com] erro geral: {e}")
 
-    return list(vagas.values())
-
-
-def _detectar_modalidade(texto: str) -> str:
-    t = texto.lower()
-    if "remoto" in t or "home office" in t:
-        return "Remoto"
-    if "hibrid" in t or "híbrid" in t:
-        return "Hibrido"
-    return "Presencial"
+    resultado.extend(list(vagas.values()))

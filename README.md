@@ -1,6 +1,6 @@
 # CaçaVagas
 
-Aplicativo desktop que busca vagas de emprego em **8 plataformas simultaneamente**, analisa currículo com IA, classifica cada vaga por aderência ao perfil e permite enviar candidaturas por e-mail com CV anexado — tudo sem abrir o navegador.
+Aplicativo que busca vagas em **8 fontes na interface e até 9 na automação diária**, classifica cada oportunidade pelos perfis Infra/Suporte e Automação/Dev e permite enviar candidaturas por e-mail com CV anexado.
 
 **Stack:** Python 3.11+ · CustomTkinter · SQLite · BeautifulSoup · Playwright · Google Gemini
 
@@ -22,10 +22,10 @@ Aplicativo desktop que busca vagas de emprego em **8 plataformas simultaneamente
 
 ## Funcionalidades
 
-- **Busca multi-plataforma** — 8 fontes em paralelo: APIs públicas, RSS, scraping e Playwright
+- **Busca multi-plataforma** — 8 fontes na interface e uma fonte adicional no digest diário
 - **Análise de currículo com IA** — envia o PDF para o Gemini (ou usa IA local via Ollama, ou NLP offline) e extrai perfil, palavras-chave, pontos fortes e dicas de melhoria
-- **Perfil dinâmico** — após analisar o CV, os termos de busca e pesos do score são substituídos automaticamente pelo perfil extraído
-- **3 abas de resultados** — Todas · Nacionais 🇧🇷 (ordenadas por distância) · Internacional 🌍
+- **Perfil dinâmico** — um CV analisado complementa os dois perfis padrão; não apaga a trilha Infra nem a trilha Dev
+- **3 abas de resultados** — Todas · Nacionais 🇧🇷 · Internacional 🌍, priorizadas por aderência
 - **Score de aderência** — cada vaga recebe 0–100 pontos com base nas keywords do perfil
 - **Badges visuais** — modalidade (Remoto/Híbrido/Presencial), idioma (EN), inglês obrigatório, distância em km
 - **Geocodificação em background** — calcula distância até vagas presenciais/híbridas usando Nominatim (gratuito, sem API key)
@@ -45,7 +45,8 @@ Aplicativo desktop que busca vagas de emprego em **8 plataformas simultaneamente
 | Remotive | API pública | Vagas remotas globais (`pais: WW`) |
 | WeWorkRemotely | RSS (3 feeds) | Dev, DevOps, Backend (`pais: WW`) |
 | Himalayas | API pública | Filtro por Brasil ou global (`pais: WW`) |
-| Gupy | API oficial | ATS brasileiro (`pais: BR`) |
+| Gupy | Endpoint público do portal | ATS brasileiro (`pais: BR`) |
+| Indeed | Integração opcional | Desativada por padrão; requer acesso autorizado |
 | InfoJobs | Scraping | Brasil (`pais: BR`) |
 | ProgramaThor | Scraping | Devs brasileiros (`pais: BR`) |
 | LinkedIn | Scraping (página pública) | BR ou WW por localização |
@@ -75,12 +76,21 @@ Cada vaga é pontuada automaticamente. Com perfil do config.py (padrão) ou com 
 
 | Seção | Exemplos | Peso |
 |---|---|---|
-| Título | `python`, `devops`, `automação` | 18–25 pts |
-| Descrição | `powershell`, `docker`, `api`, `itsm` | 5–15 pts |
-| Penalização | `react`, `java`, `mobile`, `frontend` | −5 a −10 pts |
-| Modalidade | Remoto +15, Híbrido +10 | bônus |
+| Título | cargo alinhado a Infra/Suporte ou Automação/Dev | até 40 pts |
+| Descrição | `Python`, APIs, IAM, Google Workspace, ITSM, Docker | até 40 pts |
+| Bloqueios | senioridade alta ou outra família (QA, SAP, dados etc.) | score 0 |
+| Modalidade | Remoto +4, Híbrido +3, Presencial +3 | bônus leve |
 
-Score mínimo padrão: **20 pontos** (ajustável pelo slider na interface).
+Score mínimo padrão: **40 pontos** (ajustável pelo slider na interface).
+
+### Critérios atuais de seleção
+
+- **Dois perfis independentes** — Infra/Suporte e Automação/Dev, derivados dos dois currículos sem versionar dados pessoais.
+- **Aderência final** — usa o maior score entre os dois perfis; competências das duas trilhas não são somadas artificialmente.
+- **Presencial e híbrido** — somente vagas com cidade do Rio de Janeiro confirmada no anúncio. Estado do RJ, Região Metropolitana, cidades vizinhas e local ambíguo são rejeitados.
+- **Remoto** — aceita vagas nacionais e internacionais; eventuais restrições de país/região continuam visíveis no campo de localização.
+- **Corte padrão** — 40 pontos; modalidade concede apenas bônus leve e não faz uma vaga tecnicamente irrelevante passar.
+- **Ordenação** — aderência primeiro, modalidade apenas como desempate.
 
 ---
 
@@ -90,6 +100,8 @@ Score mínimo padrão: **20 pontos** (ajustável pelo slider na interface).
 .
 ├── app.py                  # Interface principal (CustomTkinter dark theme)
 ├── config.py               # Perfil profissional, keywords, pesos de score
+├── perfis_busca.py         # Perfis sanitizados derivados dos CVs Infra e Dev
+├── filtros_vagas.py        # Modalidade e filtro geográfico da cidade do Rio
 ├── matcher.py              # Cálculo de score — suporta perfil dinâmico do CV
 ├── banco.py                # SQLite: deduplicação, histórico, geocache, cache de CV
 ├── curriculo_parser.py     # Extrai texto do PDF + analisa com Gemini/Ollama/NLP
@@ -107,6 +119,7 @@ Score mínimo padrão: **20 pontos** (ajustável pelo slider na interface).
 ├── .env.exemplo            # Template de variáveis de ambiente
 └── vagas/
     ├── gupy.py
+    ├── indeed.py
     ├── remotive.py
     ├── weworkremotely.py
     ├── himalayas.py

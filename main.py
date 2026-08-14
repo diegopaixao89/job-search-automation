@@ -7,7 +7,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from config import EMAIL_DESTINO, EMAIL_REMETENTE, TERMOS_BUSCA, SCORE_MINIMO
-from matcher import calcular_score
+from filtros_vagas import vaga_elegivel_geograficamente
+from matcher import pontuar_vaga
 import banco
 import notificador
 from vagas import gupy, remotive, linkedin, programathor, weworkremotely, himalayas, infojobs, vagas_com
@@ -48,17 +49,18 @@ def processar(todas: list[dict]) -> list[dict]:
             urls_vistas.add(url)
             sem_dup.append(v)
 
-    # Scoring
-    for v in sem_dup:
-        v["score"] = calcular_score(v)
+    # Presencial/hibrido somente na cidade do Rio; remoto pode ser global.
+    elegiveis = [v for v in sem_dup if vaga_elegivel_geograficamente(v)]
+    for v in elegiveis:
+        pontuar_vaga(v)
 
-    # Filtrar por score minimo
-    filtradas = [v for v in sem_dup if v["score"] >= SCORE_MINIMO]
+    filtradas = [v for v in elegiveis if v["score"] >= SCORE_MINIMO]
 
-    # Ordenar: remoto > hibrido > presencial, depois por score
+    # Aderencia primeiro; modalidade apenas como desempate.
     filtradas.sort(key=lambda v: (
+        -v.get("score", 0),
         {"Remoto": 0, "Hibrido": 1}.get(v.get("modalidade", ""), 2),
-        -v.get("score", 0)
+        v.get("titulo", "").lower(),
     ))
 
     return filtradas

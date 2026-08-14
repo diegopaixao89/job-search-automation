@@ -2,19 +2,24 @@
 
 import requests
 from bs4 import BeautifulSoup
+from filtros_vagas import detectar_modalidade, extrair_localizacao_anuncio
 from vagas.base import HEADERS
 
 BASE_URL  = "https://www.infojobs.com.br"
 BUSCA_URL = f"{BASE_URL}/empregos.aspx"
 
 TERMOS = [
-    "python automacao",
-    "infraestrutura ti",
-    "suporte tecnico python",
+    "analista de automacao",
+    "analista de integracoes",
+    "analista de suporte N2",
+    "analista de infraestrutura",
+    "analista de TI",
+    "tecnico de suporte",
+    "analista de service desk",
+    "analista IAM",
     "devops junior",
-    "analista ti python",
-    "backend python",
-    "automacao processos",
+    "backend python junior",
+    "desenvolvedor python junior",
 ]
 
 LOCAIS = [
@@ -54,17 +59,27 @@ def buscar() -> list[dict]:
                     if not titulo or len(titulo) < 5:
                         continue
 
-                    parent  = link.find_parent("li") or link.find_parent("div") or link.find_parent("article")
+                    parent = (
+                        link.find_parent(class_="js_rowCard")
+                        or link.find_parent("li")
+                        or link.find_parent("article")
+                        or link.find_parent("div")
+                    )
                     texto   = parent.get_text(" ", strip=True) if parent else titulo
 
                     empresa = _extrair_empresa(parent)
                     data    = _extrair_data(parent)
-                    modalidade = _detectar_modalidade(titulo + " " + texto)
+                    local_el = parent.select_one("div.mb-8") if parent else None
+                    local_texto = local_el.get_text(" ", strip=True) if local_el else texto
+                    local_real = extrair_localizacao_anuncio(local_texto, url)
+                    modalidade = detectar_modalidade(titulo + " " + texto, local_real)
 
                     vagas[url] = {
                         "titulo":     titulo,
                         "empresa":    empresa,
-                        "local":      local.replace("-", " ").title() if local else "Brasil",
+                        "local":      local_real,
+                        "local_consulta": local.replace("-", " ").title() if local else "Brasil",
+                        "local_confiavel": bool(local_real),
                         "modalidade": modalidade,
                         "url":        url,
                         "descricao":  texto[:1000],
@@ -97,12 +112,3 @@ def _extrair_data(parent) -> str:
         if el:
             return el.get("datetime", "") or el.get_text(strip=True)
     return ""
-
-
-def _detectar_modalidade(texto: str) -> str:
-    t = texto.lower()
-    if "home office" in t or "remoto" in t or "100% remoto" in t:
-        return "Remoto"
-    if "hibrid" in t or "híbrid" in t:
-        return "Hibrido"
-    return "Presencial"

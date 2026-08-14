@@ -2,22 +2,24 @@
 
 import requests
 from bs4 import BeautifulSoup
+from filtros_vagas import detectar_modalidade, extrair_localizacao_anuncio
 from vagas.base import HEADERS
 
 BASE_URL = "https://programathor.com.br"
 JOBS_URL  = f"{BASE_URL}/jobs"
 
 TERMOS_TECH = [
-    "python", "devops", "backend", "infraestrutura",
-    "automacao", "suporte", "sre",
+    "python", "devops junior", "backend python", "infraestrutura",
+    "automacao", "integracao", "suporte",
 ]
 
 
 def buscar(locais: list[str]) -> list[dict]:
     vagas = {}
 
+    locais_unicos = list(dict.fromkeys([*locais, "remoto"]))
     for termo in TERMOS_TECH:
-        for local in locais + ["remoto"]:
+        for local in locais_unicos:
             try:
                 params = {"search": termo, "location": local}
                 r = requests.get(JOBS_URL, params=params, headers=HEADERS, timeout=15)
@@ -45,13 +47,17 @@ def buscar(locais: list[str]) -> list[dict]:
 
                     desc_el = card.select_one(".description") or card.select_one("p")
                     desc = desc_el.get_text(" ", strip=True) if desc_el else ""
+                    texto_card = card.get_text(" ", strip=True)
 
-                    modalidade = _detectar_modalidade(titulo + " " + desc + " " + local)
+                    local_real = extrair_localizacao_anuncio(texto_card, vaga_url)
+                    modalidade = detectar_modalidade(titulo + " " + texto_card, local_real)
 
                     vagas[vaga_url] = {
                         "titulo":     titulo,
                         "empresa":    empresa,
-                        "local":      local.title(),
+                        "local":      local_real,
+                        "local_consulta": local.title(),
+                        "local_confiavel": bool(local_real),
                         "modalidade": modalidade,
                         "url":        vaga_url,
                         "descricao":  desc[:2000],
@@ -64,12 +70,3 @@ def buscar(locais: list[str]) -> list[dict]:
                 print(f"[ProgramaThor] erro em '{termo}' / '{local}': {e}")
 
     return list(vagas.values())
-
-
-def _detectar_modalidade(texto: str) -> str:
-    t = texto.lower()
-    if "remoto" in t or "home office" in t or "remote" in t:
-        return "Remoto"
-    if "hibrid" in t or "híbrid" in t:
-        return "Hibrido"
-    return "Presencial"

@@ -2,6 +2,7 @@
 # Docs: https://himalayas.app/jobs/api
 
 import requests
+import html
 from vagas.base import HEADERS
 import re
 
@@ -9,18 +10,20 @@ API_URL = "https://himalayas.app/jobs/api"
 
 TERMOS_BUSCA = [
     "python automation",
-    "python devops",
-    "backend python",
-    "infrastructure engineer",
-    "python developer",
-    "devops engineer",
-    "sre python",
-    "support engineer python",
+    "integration analyst",
+    "IT support analyst",
+    "application support analyst",
+    "desktop support analyst",
+    "identity access analyst",
+    "infrastructure analyst",
+    "junior python backend",
+    "junior devops",
+    "junior systems administrator",
 ]
 
 TERMOS_FILTRO = [
     "python", "devops", "backend", "automation", "infrastructure",
-    "sre", "platform", "api", "support", "integr", "cloud", "linux",
+    "api", "support", "integr", "sysadmin", "identity access", "iam",
 ]
 
 
@@ -41,11 +44,10 @@ def buscar(limite_por_termo: int = 20) -> list[dict]:
                 if not url or url in vagas:
                     continue
 
-                # Filtro de localização: manter vagas abertas ao Brasil ou worldwide
                 restricoes = j.get("locationRestrictions") or []
-                if restricoes and "Brazil" not in restricoes and "Worldwide" not in restricoes:
-                    # Aceitar também se não tem restrição (lista vazia = worldwide)
-                    continue
+                # A busca solicitada aceita oportunidades remotas internacionais.
+                # A restricao continua visivel em `local`, para o candidato poder
+                # avaliar elegibilidade antes de se inscrever.
 
                 titulo = j.get("title", "")
                 desc   = _limpar_html(j.get("description") or j.get("excerpt") or "")
@@ -62,6 +64,7 @@ def buscar(limite_por_termo: int = 20) -> list[dict]:
                     "empresa":    j.get("companyName", ""),
                     "local":      local,
                     "modalidade": "Remoto",
+                    "modalidade_confiavel": True,
                     "url":        url,
                     "descricao":  desc,
                     "data":       str(j.get("pubDate", "")),
@@ -76,6 +79,7 @@ def buscar(limite_por_termo: int = 20) -> list[dict]:
 
 
 def _limpar_html(texto: str) -> str:
+    texto = html.unescape(str(texto or ""))
     texto = re.sub(r"<[^>]+>", " ", texto)
     texto = re.sub(r"\s+", " ", texto)
     return texto[:2000].strip()

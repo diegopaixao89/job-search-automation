@@ -8,3 +8,6 @@ build/
 *.exe
 digest_preview.html
 .claude/
+tmp/
+CV Diego Paixão*.pdf
+perfil.json

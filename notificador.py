@@ -52,7 +52,7 @@ def _montar_html(vagas: list[dict], destaques: list[dict] | None = None) -> str:
     if hibridas:
         secoes += _secao("Hibrido", hibridas, "#0f5c8a", "#eef5fa")
     if presenciais:
-        secoes += _secao("Presencial — Rio de Janeiro e Regiao", presenciais, "#5a4e00", "#faf8e8")
+        secoes += _secao("Presencial — Rio de Janeiro (cidade)", presenciais, "#5a4e00", "#faf8e8")
 
     return f"""<!DOCTYPE html>
 <html lang="pt-BR">
@@ -92,7 +92,7 @@ def _montar_html(vagas: list[dict], destaques: list[dict] | None = None) -> str:
   <div class="summary">
     <b>{len(remotas)}</b> remotas &nbsp;|&nbsp;
     <b>{len(hibridas)}</b> hibridas &nbsp;|&nbsp;
-    <b>{len(presenciais)}</b> presenciais (Rio de Janeiro e regiao)
+    <b>{len(presenciais)}</b> presenciais (Rio de Janeiro - cidade)
   </div>
   {secoes}
   <div class="footer">CaçaVagas</div>
@@ -131,6 +131,7 @@ def _secao(titulo: str, vagas: list[dict], cor: str, bg: str) -> str:
 def _card(v: dict, cor: str, bg: str) -> str:
     score = v.get("score", 0)
     modalidade = v.get("modalidade", "")
+    perfil = v.get("perfil_match", "")
     kws = keywords_encontradas(v)
     kw_texto = " &bull; ".join(kws) if kws else ""
 
@@ -153,6 +154,7 @@ def _card(v: dict, cor: str, bg: str) -> str:
   <div class="card-meta">{" &nbsp;&mdash;&nbsp; ".join(meta_partes)}</div>
   <span class="badge badge-score" style="background:{bg};color:{cor};">Score {score}</span>
   <span class="badge badge-plat">{v.get('plataforma', '')}</span>
+  {f'<span class="badge badge-plat">{perfil}</span>' if perfil else ''}
   <span class="badge {badge_mod_class}">{modalidade}</span>
   {f'<div class="keywords">Palavras-chave: {kw_texto}</div>' if kw_texto else ''}
   {f'<p style="font-size:13px;color:#555;margin:8px 0;">{trecho}</p>' if trecho else ''}

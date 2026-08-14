@@ -2,7 +2,7 @@
 
 import sqlite3
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "vagas_vistas.db")
 
@@ -59,6 +59,8 @@ def _conn():
     _adicionar_coluna_se_nao_existe(c, "vagas_vistas", "idioma_obrigatorio", "TEXT")
     _adicionar_coluna_se_nao_existe(c, "vagas_vistas", "pais", "TEXT DEFAULT 'BR'")
     _adicionar_coluna_se_nao_existe(c, "vagas_vistas", "distancia_km", "REAL")
+    _adicionar_coluna_se_nao_existe(c, "vagas_vistas", "local", "TEXT")
+    _adicionar_coluna_se_nao_existe(c, "vagas_vistas", "modalidade", "TEXT DEFAULT ''")
     c.commit()
     return c
 
@@ -67,9 +69,23 @@ def _conn():
 # Vagas vistas
 # ---------------------------------------------------------------------------
 
-def is_nova(url: str) -> bool:
+def is_nova(url: str, janela_dias: int | None = None) -> bool:
+    """
+    Retorna True quando a vaga ainda nao foi registrada na janela configurada.
+
+    O comportamento padrao permanece permanente para a interface e demais
+    entrypoints. O digest informa explicitamente a janela configurada.
+    """
     with _conn() as c:
-        r = c.execute("SELECT 1 FROM vagas_vistas WHERE url = ?", (url,)).fetchone()
+        if janela_dias is None:
+            r = c.execute("SELECT 1 FROM vagas_vistas WHERE url = ?", (url,)).fetchone()
+            return r is None
+
+        limite = (datetime.now() - timedelta(days=janela_dias)).isoformat()
+        r = c.execute(
+            "SELECT 1 FROM vagas_vistas WHERE url = ? AND data_vista >= ?",
+            (url, limite),
+        ).fetchone()
         return r is None
 
 
@@ -79,16 +95,18 @@ def marcar_vista(
     idioma_obrigatorio: str | None = None,
     pais: str = "BR",
     distancia_km: float | None = None,
+    local: str | None = None,
+    modalidade: str = "",
 ):
     with _conn() as c:
         c.execute(
             """INSERT OR IGNORE INTO vagas_vistas
                (url, titulo, empresa, plataforma, score, data_vista,
-                idioma, idioma_obrigatorio, pais, distancia_km)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                idioma, idioma_obrigatorio, pais, distancia_km, local, modalidade)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (url, titulo, empresa, plataforma, score,
              datetime.now().isoformat(),
-             idioma, idioma_obrigatorio, pais, distancia_km),
+             idioma, idioma_obrigatorio, pais, distancia_km, local, modalidade),
         )
         c.commit()
 
@@ -96,6 +114,22 @@ def marcar_vista(
 def total_vistas() -> int:
     with _conn() as c:
         return c.execute("SELECT COUNT(*) FROM vagas_vistas").fetchone()[0]
+
+
+def limpar_vagas_vistas():
+    with _conn() as c:
+        c.execute("DELETE FROM vagas_vistas")
+        c.commit()
+
+
+def limpar_vagas_vistas_mais_antigas_que(dias: int):
+    if dias is None or dias <= 0:
+        return
+
+    limite = (datetime.now() - timedelta(days=dias)).isoformat()
+    with _conn() as c:
+        c.execute("DELETE FROM vagas_vistas WHERE data_vista < ?", (limite,))
+        c.commit()
 
 
 # ---------------------------------------------------------------------------
